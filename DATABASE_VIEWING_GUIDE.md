@@ -212,3 +212,4 @@ ORDER BY p.quantity_sold DESC;
 - Run setup: `npm run setup-db`
 - Check database name in `.env`: `DB_NAME=tshirtify_db`
 
+

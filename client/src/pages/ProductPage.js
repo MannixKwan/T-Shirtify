@@ -5,6 +5,8 @@ import { FaShoppingCart, FaStar, FaHeart, FaShare, FaArrowLeft } from 'react-ico
 import { useCart } from '../context/CartContext';
 import { productsAPI } from '../services/api';
 
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+
 
 const ProductContainer = styled.div`
   max-width: 1200px;
@@ -499,7 +501,7 @@ const ProductPage = () => {
             />
             {product.design_url && (
               <DesignOverlay 
-                src={product.design_url}
+                src={product.design_url?.startsWith('http') ? product.design_url : `${API_BASE_URL}${product.design_url}`}
                 alt={product.name}
                 style={{
                   left: product.design_position?.x ? `${product.design_position.x}%` : '50%',
@@ -549,7 +551,7 @@ const ProductPage = () => {
             <DesignerSection>
               <DesignerHeader>
                 <DesignerAvatar 
-                  src={product.author_avatar || `https://via.placeholder.com/60x60/667eea/ffffff?text=${product.author_name?.charAt(0) || 'A'}`} 
+                  src={product.author_avatar?.startsWith('http') ? product.author_avatar : product.author_avatar ? `${API_BASE_URL}${product.author_avatar}` : `https://via.placeholder.com/60x60/667eea/ffffff?text=${product.author_name?.charAt(0) || 'A'}`} 
                   alt={product.author_name} 
                 />
                 <DesignerInfo>

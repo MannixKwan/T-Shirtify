@@ -25,49 +25,49 @@ const seedDatabase = async () => {
         email: 'john@example.com',
         password: hashedPassword,
         role: 'customer',
-        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=JohnDoe&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf'
+        avatar: '/uploads/avatars/john-doe-avatar.svg'
       },
       {
         name: 'Jane Smith',
         email: 'jane@example.com',
         password: hashedPassword,
         role: 'customer',
-        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=JaneSmith&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf'
+        avatar: '/uploads/avatars/jane-smith-avatar.svg'
       },
       {
         name: 'Rock Designs',
         email: 'rock@designs.com',
         password: hashedPassword,
         role: 'merchant',
-        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=RockDesigns&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf'
+        avatar: '/uploads/avatars/rock-designs-avatar.svg'
       },
       {
         name: 'Art Studio',
         email: 'art@studio.com',
         password: hashedPassword,
         role: 'merchant',
-        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=ArtStudio&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf'
+        avatar: '/uploads/avatars/art-studio-avatar.svg'
       },
       {
         name: 'TechWear',
         email: 'tech@wear.com',
         password: hashedPassword,
         role: 'merchant',
-        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=TechWear&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf'
+        avatar: '/uploads/avatars/techwear-avatar.svg'
       },
       {
         name: 'Admin User',
         email: 'admin@tshirtify.com',
         password: hashedPassword,
         role: 'admin',
-        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=AdminUser&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf'
+        avatar: '/uploads/avatars/admin-user-avatar.svg'
       }
     ];
 
     for (const user of users) {
       await pool.execute(
-        'INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)',
-        [user.name, user.email, user.password, user.role]
+        'INSERT INTO users (name, email, password, role, avatar) VALUES (?, ?, ?, ?, ?)',
+        [user.name, user.email, user.password, user.role, user.avatar]
       );
     }
 
@@ -78,13 +78,14 @@ const seedDatabase = async () => {
       'SELECT id, name FROM users WHERE role IN ("admin", "merchant")'
     );
 
-    // Create a map of author names to avatars
-    const authorAvatars = {
-      'Rock Designs': 'https://api.dicebear.com/7.x/avataaars/svg?seed=RockDesigns&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf',
-      'Art Studio': 'https://api.dicebear.com/7.x/avataaars/svg?seed=ArtStudio&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf',
-      'TechWear': 'https://api.dicebear.com/7.x/avataaars/svg?seed=TechWear&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf',
-      'Admin User': 'https://api.dicebear.com/7.x/avataaars/svg?seed=AdminUser&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf'
-    };
+    // Create a map of author names to avatars (from users table)
+    const [usersWithAvatars] = await pool.execute(
+      'SELECT id, name, avatar FROM users WHERE role IN ("admin", "merchant")'
+    );
+    const authorAvatars = {};
+    usersWithAvatars.forEach(user => {
+      authorAvatars[user.name] = user.avatar;
+    });
 
     // Create sample products
     const products = [
@@ -92,7 +93,7 @@ const seedDatabase = async () => {
         name: "Vintage Rock T-Shirt",
         price: 29.99,
         description: "A classic vintage rock design featuring bold typography and retro aesthetics. Perfect for music lovers and vintage enthusiasts who want to make a statement with their style.",
-        design_url: "https://picsum.photos/seed/rock-design/800/800",
+        design_url: "/uploads/designs/rock-design.jpg",
         design_position: JSON.stringify({ x: 50, y: 50, width: 60, height: 60 }),
         author_id: adminUsers[0].id,
         author_name: adminUsers[0].name,
@@ -111,7 +112,7 @@ const seedDatabase = async () => {
         name: "Minimalist Art Print",
         price: 24.99,
         description: "Clean and modern minimalist design that speaks volumes through simplicity. Perfect for those who appreciate understated elegance and contemporary style.",
-        design_url: "https://picsum.photos/seed/art-design/800/800",
+        design_url: "/uploads/designs/art-design.jpg",
         design_position: JSON.stringify({ x: 50, y: 50, width: 70, height: 70 }),
         author_id: adminUsers[1].id,
         author_name: adminUsers[1].name,
@@ -130,7 +131,7 @@ const seedDatabase = async () => {
         name: "Tech Geek Collection",
         price: 34.99,
         description: "For the tech enthusiasts and coding wizards. This design celebrates the digital age with sleek, modern graphics that any programmer would be proud to wear.",
-        design_url: "https://picsum.photos/seed/tech-design/800/800",
+        design_url: "/uploads/designs/tech-design.jpg",
         design_position: JSON.stringify({ x: 50, y: 50, width: 65, height: 65 }),
         author_id: adminUsers[2].id,
         author_name: adminUsers[2].name,
@@ -149,7 +150,7 @@ const seedDatabase = async () => {
         name: "Nature Explorer",
         price: 27.99,
         description: "Inspired by the great outdoors, this design captures the spirit of adventure and exploration. Perfect for nature lovers and outdoor enthusiasts.",
-        design_url: "https://picsum.photos/seed/nature-design/800/800",
+        design_url: "/uploads/designs/nature-design.jpg",
         design_position: JSON.stringify({ x: 50, y: 50, width: 55, height: 55 }),
         author_id: adminUsers[0].id,
         author_name: adminUsers[0].name,
@@ -168,7 +169,7 @@ const seedDatabase = async () => {
         name: "Abstract Geometry",
         price: 31.99,
         description: "Bold geometric patterns and abstract shapes create a striking visual impact. This design is perfect for those who love contemporary art and modern aesthetics.",
-        design_url: "https://picsum.photos/seed/art-design/800/800",
+        design_url: "/uploads/designs/art-design.jpg",
         design_position: JSON.stringify({ x: 50, y: 50, width: 75, height: 75 }),
         author_id: adminUsers[1].id,
         author_name: adminUsers[1].name,
@@ -187,7 +188,7 @@ const seedDatabase = async () => {
         name: "Retro Gaming",
         price: 26.99,
         description: "Nostalgic gaming design that takes you back to the golden age of arcade games. Perfect for gamers and retro enthusiasts who want to show off their love for classic gaming.",
-        design_url: "https://picsum.photos/seed/gaming-design/800/800",
+        design_url: "/uploads/designs/gaming-design.jpg",
         design_position: JSON.stringify({ x: 50, y: 50, width: 80, height: 80 }),
         author_id: adminUsers[2].id,
         author_name: adminUsers[2].name,
@@ -206,7 +207,7 @@ const seedDatabase = async () => {
         name: "Urban Street Style",
         price: 33.99,
         description: "Edgy urban design that captures the essence of street culture and modern city life. Perfect for those who love contemporary street fashion and urban aesthetics.",
-        design_url: "https://picsum.photos/seed/urban-design/800/800",
+        design_url: "/uploads/designs/urban-design.jpg",
         design_position: JSON.stringify({ x: 50, y: 50, width: 70, height: 70 }),
         author_id: adminUsers[0].id,
         author_name: adminUsers[0].name,
@@ -225,7 +226,7 @@ const seedDatabase = async () => {
         name: "Ocean Waves",
         price: 28.99,
         description: "Inspired by the calming beauty of ocean waves, this design brings a sense of peace and tranquility. Perfect for beach lovers and those who find solace in the sea.",
-        design_url: "https://picsum.photos/seed/ocean-design/800/800",
+        design_url: "/uploads/designs/ocean-design.jpg",
         design_position: JSON.stringify({ x: 50, y: 50, width: 60, height: 60 }),
         author_id: adminUsers[1].id,
         author_name: adminUsers[1].name,

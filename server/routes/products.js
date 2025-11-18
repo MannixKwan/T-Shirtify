@@ -43,7 +43,7 @@ router.get('/', async (req, res) => {
     const connection = await pool.getConnection();
 
     let query = `
-      SELECT p.*, u.name as author_name, 
+      SELECT p.*, u.name as author_name, u.avatar as author_avatar,
              COALESCE(p.quantity_sold, 0) as quantity_sold,
              COALESCE(p.total_revenue, 0) as total_revenue
       FROM products p
@@ -69,10 +69,10 @@ router.get('/', async (req, res) => {
     const [products] = await connection.execute(query, params);
     connection.release();
 
-    // Add author avatar URLs
+    // Add fallback avatar if not in database
     const productsWithAvatars = products.map(product => ({
       ...product,
-      author_avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(product.author_name || 'Designer')}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`
+      author_avatar: product.author_avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(product.author_name || 'Designer')}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`
     }));
 
     res.json({ products: productsWithAvatars });
@@ -95,7 +95,7 @@ router.get('/search', async (req, res) => {
     // Get all products (including out of stock for search purposes)
     // Filter by in_stock only if explicitly set to FALSE/0
     const [allProducts] = await connection.execute(`
-      SELECT p.*, u.name as author_name, 
+      SELECT p.*, u.name as author_name, u.avatar as author_avatar,
              COALESCE(p.quantity_sold, 0) as quantity_sold,
              COALESCE(p.total_revenue, 0) as total_revenue
       FROM products p
@@ -117,10 +117,10 @@ router.get('/search', async (req, res) => {
     const endIndex = startIndex + parseInt(limit);
     const paginatedProducts = filteredProducts.slice(startIndex, endIndex);
     
-    // Add author avatar URLs
+    // Add fallback avatar if not in database
     const productsWithAvatars = paginatedProducts.map(product => ({
       ...product,
-      author_avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(product.author_name || 'Designer')}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`
+      author_avatar: product.author_avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(product.author_name || 'Designer')}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`
     }));
     
     connection.release();
@@ -144,7 +144,7 @@ router.get('/hot', async (req, res) => {
     const connection = await pool.getConnection();
     
     const [products] = await connection.execute(`
-      SELECT p.*, u.name as author_name, 
+      SELECT p.*, u.name as author_name, u.avatar as author_avatar,
              COALESCE(recent_sales.quantity_sold, 0) as quantity_sold,
              COALESCE(recent_sales.total_revenue, 0) as total_revenue
       FROM products p
@@ -164,10 +164,10 @@ router.get('/hot', async (req, res) => {
       LIMIT 8
     `);
     
-    // Add author avatar URLs
+    // Add fallback avatar if not in database
     const productsWithAvatars = products.map(product => ({
       ...product,
-      author_avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(product.author_name || 'Designer')}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`
+      author_avatar: product.author_avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(product.author_name || 'Designer')}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`
     }));
     
     connection.release();
@@ -223,17 +223,17 @@ router.get('/recommended', async (req, res) => {
         whereClause += ' ORDER BY RAND() LIMIT 12';
         
         [products] = await connection.execute(`
-          SELECT p.*, u.name as author_name, 
+          SELECT p.*, u.name as author_name, u.avatar as author_avatar,
                  COALESCE(p.quantity_sold, 0) as quantity_sold
           FROM products p
           LEFT JOIN users u ON p.author_id = u.id
           WHERE ${whereClause}
         `, params);
         
-        // Add author avatar URLs
+        // Add fallback avatar if not in database
         products = products.map(product => ({
           ...product,
-          author_avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(product.author_name || 'Designer')}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`
+          author_avatar: product.author_avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(product.author_name || 'Designer')}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`
         }));
       } else {
         // No order history, return empty array
@@ -259,7 +259,7 @@ router.get('/:id', async (req, res) => {
     const connection = await pool.getConnection();
 
     const [products] = await connection.execute(`
-      SELECT p.*, u.name as author_name, 
+      SELECT p.*, u.name as author_name, u.avatar as author_avatar,
              COALESCE(p.quantity_sold, 0) as quantity_sold,
              COALESCE(p.total_revenue, 0) as total_revenue
       FROM products p
@@ -273,10 +273,10 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Product not found' });
     }
 
-    // Add author avatar URL
+    // Add fallback avatar if not in database
     const product = {
       ...products[0],
-      author_avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(products[0].author_name || 'Designer')}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`
+      author_avatar: products[0].author_avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(products[0].author_name || 'Designer')}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`
     };
 
     res.json({ product });

@@ -13,7 +13,10 @@
     "migrate-roles": "node server/database/migrate_roles.js",
     "seed-db": "node server/database/seed.js",
     "create-test-users": "node server/database/create_test_users.js",
-    "view-db": "node server/database/view_db.js"
+    "view-db": "node server/database/view_db.js",
+    "add-avatar-column": "node server/database/add_avatar_column.js",
+    "download-images": "node server/scripts/download_placeholder_images.js",
+    "reset-test-passwords": "node server/database/reset_test_passwords.js"
   },
   "dependencies": {
     "express": "^4.18.2",

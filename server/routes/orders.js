@@ -179,8 +179,8 @@ router.post('/', [
   }
 });
 
-// Get user's orders
-router.get('/', authenticateToken, requireCustomer, async (req, res) => {
+// Get user's orders (allow all authenticated users, not just customers)
+router.get('/', authenticateToken, async (req, res) => {
   try {
     const connection = await pool.getConnection();
 
@@ -194,9 +194,24 @@ router.get('/', authenticateToken, requireCustomer, async (req, res) => {
       ORDER BY o.created_at DESC
     `, [req.user.id]);
 
+    // Get order items for each order
+    const ordersWithItems = await Promise.all(orders.map(async (order) => {
+      const [items] = await connection.execute(`
+        SELECT oi.*, p.name, p.design_url
+        FROM order_items oi
+        JOIN products p ON oi.product_id = p.id
+        WHERE oi.order_id = ?
+      `, [order.id]);
+      
+      return {
+        ...order,
+        items: items || []
+      };
+    }));
+
     connection.release();
 
-    res.json({ orders });
+    res.json({ orders: ordersWithItems });
 
   } catch (error) {
     console.error('Get orders error:', error);
@@ -204,8 +219,8 @@ router.get('/', authenticateToken, requireCustomer, async (req, res) => {
   }
 });
 
-// Get order details
-router.get('/:id', authenticateToken, requireCustomer, async (req, res) => {
+// Get order details (allow all authenticated users)
+router.get('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     const connection = await pool.getConnection();

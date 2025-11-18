@@ -142,3 +142,4 @@ router.get('/products/manage', authenticateToken, requireAdminOrMerchant, async 
 - Role checks are backward compatible
 - Migration is safe to run multiple times (idempotent)
 
+

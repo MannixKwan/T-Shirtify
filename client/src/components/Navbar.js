@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import { FaSearch, FaShoppingCart, FaUser, FaSignOutAlt, FaCog } from 'react-icons/fa';
+import { FaSearch, FaShoppingCart, FaUser, FaSignOutAlt, FaCog, FaBox } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 
@@ -257,7 +257,7 @@ const Navbar = () => {
                   </>
                 ) : (
                   <DropdownItem to="/orders" onClick={() => setIsUserMenuOpen(false)}>
-                    <FaUser />
+                    <FaBox />
                     My Orders
                   </DropdownItem>
                 )}

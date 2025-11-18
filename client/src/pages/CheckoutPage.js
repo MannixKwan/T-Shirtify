@@ -360,8 +360,17 @@ const CheckoutPage = () => {
       // Clear cart
       await clearCart();
       
-      // Redirect to home with success message
-      navigate('/', { state: { message: 'Order placed successfully! Order ID: ' + (response.orderId || 'N/A') } });
+      // Redirect to order detail page
+      if (response.orderId) {
+        navigate(`/orders/${response.orderId}`, { 
+          state: { message: 'Order placed successfully!' } 
+        });
+      } else {
+        // Fallback to orders page if orderId is not available
+        navigate('/orders', { 
+          state: { message: 'Order placed successfully!' } 
+        });
+      }
     } catch (error) {
       console.error('Order creation error:', error);
       setError(error.response?.data?.error || 'Failed to place order. Please try again.');

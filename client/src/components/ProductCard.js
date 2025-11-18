@@ -4,6 +4,8 @@ import styled from 'styled-components';
 import { FaShoppingCart, FaStar, FaHeart, FaShare } from 'react-icons/fa';
 import { useCart } from '../context/CartContext';
 
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+
 const CardContainer = styled.div`
   background: white;
   border-radius: 12px;
@@ -271,7 +273,7 @@ const ProductCard = ({ product }) => {
         />
         {product.design_url && (
           <DesignOverlay 
-            src={product.design_url}
+            src={product.design_url?.startsWith('http') ? product.design_url : `${API_BASE_URL}${product.design_url}`}
             alt={product.name}
             style={{
               left: product.design_position?.x ? `${product.design_position.x}%` : '50%',
@@ -322,7 +324,7 @@ const ProductCard = ({ product }) => {
         
         <AuthorInfo>
           <AuthorAvatar 
-            src={product.author_avatar || `https://via.placeholder.com/24x24/667eea/ffffff?text=${product.author_name?.charAt(0) || 'A'}`} 
+            src={product.author_avatar?.startsWith('http') ? product.author_avatar : product.author_avatar ? `${API_BASE_URL}${product.author_avatar}` : `https://via.placeholder.com/24x24/667eea/ffffff?text=${product.author_name?.charAt(0) || 'A'}`} 
             alt={product.author_name} 
           />
           <AuthorName>{product.author_name || 'Unknown Designer'}</AuthorName>
