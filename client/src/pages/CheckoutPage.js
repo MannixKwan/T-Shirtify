@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { FaArrowLeft, FaCreditCard, FaLock, FaMapMarkerAlt, FaUser, FaEnvelope, FaPhone } from 'react-icons/fa';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { ordersAPI } from '../services/api';
+import { ordersAPI, authAPI } from '../services/api';
 
 const CheckoutContainer = styled.div`
   max-width: 1200px;
@@ -288,6 +288,7 @@ const CheckoutPage = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [profileLoaded, setProfileLoaded] = useState(false);
   
   const [shippingInfo, setShippingInfo] = useState({
     fullName: user?.name || '',
@@ -299,6 +300,37 @@ const CheckoutPage = () => {
     zipCode: '',
     country: 'United States'
   });
+
+  // Load profile data if user is authenticated
+  useEffect(() => {
+    if (isAuthenticated && !profileLoaded) {
+      loadProfile();
+    }
+  }, [isAuthenticated, profileLoaded]);
+
+  const loadProfile = async () => {
+    try {
+      const response = await authAPI.getMe();
+      const profile = response.user;
+      
+      if (profile) {
+        setShippingInfo({
+          fullName: profile.name || user?.name || '',
+          email: profile.email || user?.email || '',
+          phone: profile.phone || '',
+          address: profile.address || '',
+          city: profile.city || '',
+          state: profile.state || '',
+          zipCode: profile.zip_code || '',
+          country: profile.country || 'United States'
+        });
+        setProfileLoaded(true);
+      }
+    } catch (err) {
+      console.error('Error loading profile:', err);
+      // Don't show error, just use defaults
+    }
+  };
 
   const cartItems = cart.items || [];
   const subtotal = cart.subtotal || 0;
@@ -337,10 +369,13 @@ const CheckoutPage = () => {
       // Format shipping address
       const shippingAddress = `${shippingInfo.fullName}\n${shippingInfo.address}\n${shippingInfo.city}, ${shippingInfo.state} ${shippingInfo.zipCode}\n${shippingInfo.country}\nPhone: ${shippingInfo.phone}`;
 
+      // Get payment method from profile or default to credit_card
+      const paymentMethod = user?.payment_method || 'credit_card';
+      
       // Prepare order data
       const orderData = {
         shipping_address: shippingAddress,
-        payment_method: 'credit_card'
+        payment_method: paymentMethod
       };
 
       // If not authenticated, include cart items and customer info
@@ -535,6 +570,22 @@ const CheckoutPage = () => {
               <p style={{ color: '#6b7280', marginBottom: '16px' }}>
                 Payment processing will be integrated in the next phase. For now, orders will be created and you can complete payment later.
               </p>
+              
+              {isAuthenticated && (
+                <p style={{ 
+                  color: '#667eea', 
+                  marginTop: '16px', 
+                  fontSize: '0.9rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  <FaUser />
+                  <Link to="/profile" style={{ color: '#667eea', textDecoration: 'underline' }}>
+                    Update your profile
+                  </Link> to save this information for faster checkout next time.
+                </p>
+              )}
             </FormSection>
           </form>
         </CheckoutForm>

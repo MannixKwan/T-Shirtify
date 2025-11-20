@@ -256,10 +256,16 @@ const Navbar = () => {
                     </DropdownItem>
                   </>
                 ) : (
-                  <DropdownItem to="/orders" onClick={() => setIsUserMenuOpen(false)}>
-                    <FaBox />
-                    My Orders
-                  </DropdownItem>
+                  <>
+                    <DropdownItem to="/profile" onClick={() => setIsUserMenuOpen(false)}>
+                      <FaUser />
+                      My Profile
+                    </DropdownItem>
+                    <DropdownItem to="/orders" onClick={() => setIsUserMenuOpen(false)}>
+                      <FaBox />
+                      My Orders
+                    </DropdownItem>
+                  </>
                 )}
                 <LogoutButton onClick={handleLogout}>
                   <FaSignOutAlt />

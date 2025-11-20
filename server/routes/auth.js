@@ -187,17 +187,113 @@ router.post('/admin/login', [
 // Get current user
 router.get('/me', authenticateToken, async (req, res) => {
   try {
+    const connection = await pool.getConnection();
+    
+    const [users] = await connection.execute(
+      'SELECT id, email, name, role, phone, address, city, state, zip_code, country, payment_method FROM users WHERE id = ?',
+      [req.user.id]
+    );
+    
+    connection.release();
+    
+    if (users.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
     res.json({
-      user: {
-        id: req.user.id,
-        email: req.user.email,
-        name: req.user.name,
-        role: req.user.role
-      }
+      user: users[0]
     });
   } catch (error) {
     console.error('Get user error:', error);
     res.status(500).json({ error: 'Failed to get user info' });
+  }
+});
+
+// Update user profile
+router.put('/profile', authenticateToken, [
+  body('name').optional().trim().isLength({ min: 2 }),
+  body('phone').optional().trim(),
+  body('address').optional().trim(),
+  body('city').optional().trim(),
+  body('state').optional().trim(),
+  body('zip_code').optional().trim(),
+  body('country').optional().trim(),
+  body('payment_method').optional().isIn(['credit_card', 'paypal', 'stripe'])
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { name, phone, address, city, state, zip_code, country, payment_method } = req.body;
+    const connection = await pool.getConnection();
+
+    // Build update query dynamically
+    const updates = [];
+    const values = [];
+
+    if (name !== undefined) {
+      updates.push('name = ?');
+      values.push(name);
+    }
+    if (phone !== undefined) {
+      updates.push('phone = ?');
+      values.push(phone);
+    }
+    if (address !== undefined) {
+      updates.push('address = ?');
+      values.push(address);
+    }
+    if (city !== undefined) {
+      updates.push('city = ?');
+      values.push(city);
+    }
+    if (state !== undefined) {
+      updates.push('state = ?');
+      values.push(state);
+    }
+    if (zip_code !== undefined) {
+      updates.push('zip_code = ?');
+      values.push(zip_code);
+    }
+    if (country !== undefined) {
+      updates.push('country = ?');
+      values.push(country);
+    }
+    if (payment_method !== undefined) {
+      updates.push('payment_method = ?');
+      values.push(payment_method);
+    }
+
+    if (updates.length === 0) {
+      connection.release();
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    values.push(req.user.id);
+
+    const [result] = await connection.execute(
+      `UPDATE users SET ${updates.join(', ')} WHERE id = ?`,
+      values
+    );
+
+    // Get updated user
+    const [users] = await connection.execute(
+      'SELECT id, email, name, role, phone, address, city, state, zip_code, country, payment_method FROM users WHERE id = ?',
+      [req.user.id]
+    );
+
+    connection.release();
+
+    res.json({
+      message: 'Profile updated successfully',
+      user: users[0]
+    });
+
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({ error: 'Failed to update profile' });
   }
 });
 

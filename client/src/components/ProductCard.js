@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import { FaShoppingCart, FaStar, FaHeart, FaShare } from 'react-icons/fa';
+import { FaShoppingCart, FaStar, FaHeart, FaShare, FaCheck } from 'react-icons/fa';
 import { useCart } from '../context/CartContext';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
@@ -166,7 +166,7 @@ const AuthorName = styled.span`
 
 const AddToCartButton = styled.button`
   width: 100%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: ${props => props.added ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'};
   color: white;
   border: none;
   padding: 12px;
@@ -177,11 +177,13 @@ const AddToCartButton = styled.button`
   align-items: center;
   justify-content: center;
   gap: 8px;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
+  position: relative;
+  min-height: 40px;
   
   &:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    transform: ${props => props.added ? 'none' : 'translateY(-1px)'};
+    box-shadow: ${props => props.added ? '0 4px 12px rgba(16, 185, 129, 0.3)' : '0 4px 12px rgba(102, 126, 234, 0.3)'};
   }
   
   &:disabled {
@@ -190,6 +192,45 @@ const AddToCartButton = styled.button`
     cursor: not-allowed;
     transform: none;
     box-shadow: none;
+  }
+  
+  .button-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    position: relative;
+  }
+  
+  .default-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    opacity: ${props => props.added ? '0' : '1'};
+    transform: ${props => props.added ? 'translateX(-15px)' : 'translateX(0)'};
+    position: ${props => props.added ? 'absolute' : 'relative'};
+    width: 100%;
+  }
+  
+  .success-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    opacity: ${props => props.added ? '1' : '0'};
+    transform: ${props => props.added ? 'translateX(0)' : 'translateX(15px)'};
+    position: ${props => props.added ? 'relative' : 'absolute'};
+    width: 100%;
+  }
+  
+  .icon {
+    transition: transform 0.3s ease;
+    transform: ${props => props.added ? 'scale(1.1)' : 'scale(1)'};
+    flex-shrink: 0;
   }
 `;
 
@@ -222,10 +263,11 @@ const ProductCard = ({ product }) => {
   const { addToCart } = useCart();
   const navigate = useNavigate();
   const [isAdding, setIsAdding] = useState(false);
+  const [addedToCart, setAddedToCart] = useState(false);
 
   // Add error boundary for product data
-  if (!product) {
-    return <div>Loading...</div>;
+  if (!product || !product.id) {
+    return null; // Don't render if product is invalid
   }
 
   const handleAddToCart = async (e) => {
@@ -234,9 +276,11 @@ const ProductCard = ({ product }) => {
     
     if (isAdding) return;
     
+    setIsAdding(true);
+    setAddedToCart(false);
+    
     try {
-      setIsAdding(true);
-      await addToCart(
+      const result = await addToCart(
         product.id,
         1,
         'M', // Default size M
@@ -247,6 +291,14 @@ const ProductCard = ({ product }) => {
           design_position: product.design_position
         }
       );
+      
+      // Show success animation if addToCart succeeded
+      // addToCart returns { success: true } on success or throws error
+      setAddedToCart(true);
+      // Reset after 2 seconds
+      setTimeout(() => {
+        setAddedToCart(false);
+      }, 2000);
     } catch (error) {
       console.error('Failed to add to cart:', error);
     } finally {
@@ -322,7 +374,7 @@ const ProductCard = ({ product }) => {
           </SalesItem>
         </SalesInfo>
         
-        <AuthorInfo>
+        <AuthorInfo as={Link} to={product.author_id ? `/designer/${product.author_id}` : '#'} onClick={(e) => e.stopPropagation()}>
           <AuthorAvatar 
             src={product.author_avatar?.startsWith('http') ? product.author_avatar : product.author_avatar ? `${API_BASE_URL}${product.author_avatar}` : `https://via.placeholder.com/24x24/667eea/ffffff?text=${product.author_name?.charAt(0) || 'A'}`} 
             alt={product.author_name} 
@@ -330,9 +382,21 @@ const ProductCard = ({ product }) => {
           <AuthorName>{product.author_name || 'Unknown Designer'}</AuthorName>
         </AuthorInfo>
         
-        <AddToCartButton onClick={handleAddToCart} disabled={isAdding}>
-          <FaShoppingCart />
-          {isAdding ? 'Adding...' : 'Add to Cart'}
+        <AddToCartButton 
+          onClick={handleAddToCart} 
+          disabled={isAdding} 
+          added={addedToCart}
+        >
+          <div className="button-content">
+            <div className="default-content">
+              <FaShoppingCart className="icon" />
+              <span>{isAdding ? 'Adding...' : 'Add to Cart'}</span>
+            </div>
+            <div className="success-content">
+              <FaCheck className="icon" />
+              <span>Added!</span>
+            </div>
+          </div>
         </AddToCartButton>
       </CardContent>
     </CardContainer>

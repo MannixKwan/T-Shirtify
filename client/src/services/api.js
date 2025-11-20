@@ -48,6 +48,8 @@ export const authAPI = {
     api.post('/auth/admin/login', { email, password }),
   
   getMe: () => api.get('/auth/me'),
+  
+  updateProfile: (profileData) => api.put('/auth/profile', profileData),
 };
 
 // Products API
@@ -56,7 +58,7 @@ export const productsAPI = {
   
   getHot: () => api.get('/products/hot'),
   
-  getRecommended: () => api.get('/products/recommended'),
+  getRecommended: (limit = 12, offset = 0) => api.get('/products/recommended', { params: { limit, offset } }),
   
   getById: (id) => api.get(`/products/${id}`),
   
@@ -131,6 +133,24 @@ export const adminAPI = {
     api.get('/admin/sales-report', { params: { year, month } }),
   
   getCustomerAnalytics: () => api.get('/admin/customer-analytics'),
+};
+
+// Designers API
+export const designersAPI = {
+  getDesigner: (id) => api.get(`/designers/${id}`),
+  
+  updateDesignerProfile: (id, profileData, bannerFile) => {
+    const formData = new FormData();
+    if (profileData.description !== undefined) {
+      formData.append('description', profileData.description);
+    }
+    if (bannerFile) {
+      formData.append('banner', bannerFile);
+    }
+    return api.put(`/designers/${id}/profile`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
 };
 
 export default api; 

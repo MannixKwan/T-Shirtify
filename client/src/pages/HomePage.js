@@ -240,12 +240,34 @@ const ErrorMessage = styled.div`
   padding: 40px;
 `;
 
+const LoadingMoreContainer = styled.div`
+  text-align: center;
+  padding: 40px 20px;
+  color: #6b7280;
+`;
+
+const LoadingText = styled.p`
+  font-size: 1rem;
+  margin: 0;
+`;
+
+const EndMessage = styled.div`
+  text-align: center;
+  padding: 40px 20px;
+  color: #9ca3af;
+  font-size: 1rem;
+  font-style: italic;
+`;
+
 const HomePage = () => {
   const [hotProducts, setHotProducts] = useState([]);
   const [recommendedProducts, setRecommendedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMoreRecommended, setHasMoreRecommended] = useState(true);
+  const [recommendedOffset, setRecommendedOffset] = useState(0);
 
   const carouselSlides = [
     {
@@ -276,7 +298,7 @@ const HomePage = () => {
       
       const [hotResponse, recommendedResponse] = await Promise.all([
         productsAPI.getHot(),
-        productsAPI.getRecommended()
+        productsAPI.getRecommended(12, 0)
       ]);
       
       console.log('Hot products response:', hotResponse);
@@ -284,6 +306,8 @@ const HomePage = () => {
       
       setHotProducts(hotResponse.products || []);
       setRecommendedProducts(recommendedResponse.products || []);
+      setHasMoreRecommended(recommendedResponse.hasMore !== false);
+      setRecommendedOffset(recommendedResponse.products?.length || 0);
     } catch (error) {
       console.error('Failed to load products:', error);
       setError('Failed to load products. Please try again later.');
@@ -309,6 +333,42 @@ const HomePage = () => {
     const interval = setInterval(nextSlide, 5000);
     return () => clearInterval(interval);
   }, [nextSlide]);
+
+  // Infinite scroll for recommended products
+  const loadMoreRecommended = useCallback(async () => {
+    if (loadingMore || !hasMoreRecommended) return;
+    
+    try {
+      setLoadingMore(true);
+      const response = await productsAPI.getRecommended(12, recommendedOffset);
+      
+      if (response.products && response.products.length > 0) {
+        setRecommendedProducts(prev => [...prev, ...response.products]);
+        setRecommendedOffset(prev => prev + response.products.length);
+        setHasMoreRecommended(response.hasMore !== false);
+      } else {
+        setHasMoreRecommended(false);
+      }
+    } catch (err) {
+      console.error('Error loading more recommended products:', err);
+      setHasMoreRecommended(false);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, hasMoreRecommended, recommendedOffset]);
+
+  // Scroll listener for infinite scroll
+  useEffect(() => {
+    const handleScroll = () => {
+      // Check if user is near the bottom of the page (within 500px)
+      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 500) {
+        loadMoreRecommended();
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [loadMoreRecommended]);
 
   if (loading) {
     return (
@@ -401,11 +461,21 @@ const HomePage = () => {
             {error ? (
               <ErrorMessage>{error}</ErrorMessage>
             ) : (
-              <ProductsGrid>
-                {recommendedProducts.map(product => (
-                  <ProductCard key={product.id} product={product} />
-                ))}
-              </ProductsGrid>
+              <>
+                <ProductsGrid>
+                  {recommendedProducts.map(product => (
+                    <ProductCard key={product.id} product={product} />
+                  ))}
+                </ProductsGrid>
+                {loadingMore && (
+                  <LoadingMoreContainer>
+                    <LoadingText>Loading more products...</LoadingText>
+                  </LoadingMoreContainer>
+                )}
+                {!hasMoreRecommended && recommendedProducts.length > 0 && (
+                  <EndMessage>You've seen all recommended products!</EndMessage>
+                )}
+              </>
             )}
           </Container>
         </Section>

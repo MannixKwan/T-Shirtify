@@ -87,8 +87,16 @@ export const AuthProvider = ({ children }) => {
     setError(null);
   };
 
+  const refreshUser = async () => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      await checkAuthStatus();
+    }
+  };
+
   const value = {
     user,
+    setUser,
     loading,
     error,
     login,
@@ -96,6 +104,7 @@ export const AuthProvider = ({ children }) => {
     adminLogin,
     logout,
     clearError,
+    refreshUser,
     isAuthenticated: !!user,
     isAdmin: user?.role === 'admin',
     isMerchant: user?.role === 'merchant',

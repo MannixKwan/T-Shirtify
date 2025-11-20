@@ -43,7 +43,7 @@ router.get('/', async (req, res) => {
     const connection = await pool.getConnection();
 
     let query = `
-      SELECT p.*, u.name as author_name, u.avatar as author_avatar,
+      SELECT p.*, u.name as author_name, u.avatar as author_avatar, u.id as author_id,
              COALESCE(p.quantity_sold, 0) as quantity_sold,
              COALESCE(p.total_revenue, 0) as total_revenue
       FROM products p
@@ -95,7 +95,7 @@ router.get('/search', async (req, res) => {
     // Get all products (including out of stock for search purposes)
     // Filter by in_stock only if explicitly set to FALSE/0
     const [allProducts] = await connection.execute(`
-      SELECT p.*, u.name as author_name, u.avatar as author_avatar,
+      SELECT p.*, u.name as author_name, u.avatar as author_avatar, u.id as author_id,
              COALESCE(p.quantity_sold, 0) as quantity_sold,
              COALESCE(p.total_revenue, 0) as total_revenue
       FROM products p
@@ -144,7 +144,7 @@ router.get('/hot', async (req, res) => {
     const connection = await pool.getConnection();
     
     const [products] = await connection.execute(`
-      SELECT p.*, u.name as author_name, u.avatar as author_avatar,
+      SELECT p.*, u.name as author_name, u.avatar as author_avatar, u.id as author_id,
              COALESCE(recent_sales.quantity_sold, 0) as quantity_sold,
              COALESCE(recent_sales.total_revenue, 0) as total_revenue
       FROM products p
@@ -159,7 +159,7 @@ router.get('/hot', async (req, res) => {
         AND o.status IN ('delivered', 'shipped', 'processing')
         GROUP BY oi.product_id
       ) recent_sales ON p.id = recent_sales.product_id
-      WHERE p.in_stock = 1
+      WHERE p.in_stock != 0 OR p.in_stock IS NULL
       ORDER BY recent_sales.quantity_sold DESC, p.quantity_sold DESC, p.created_at DESC
       LIMIT 8
     `);
@@ -183,8 +183,11 @@ router.get('/recommended', async (req, res) => {
   try {
     const connection = await pool.getConnection();
     const userId = req.user?.id; // Get user ID from auth middleware
+    const limit = parseInt(req.query.limit) || 12;
+    const offset = parseInt(req.query.offset) || 0;
     
     let products;
+    let totalCount = 0;
     
     if (userId) {
       // Get recommendations based on user's order history
@@ -220,10 +223,22 @@ router.get('/recommended', async (req, res) => {
           whereClause += ')';
         }
         
-        whereClause += ' ORDER BY RAND() LIMIT 12';
+        whereClause += ' ORDER BY RAND()';
+        
+        // Get total count first
+        const [countResult] = await connection.execute(`
+          SELECT COUNT(*) as total
+          FROM products p
+          WHERE ${whereClause}
+        `, params);
+        totalCount = countResult[0].total;
+        
+        // Get paginated products
+        whereClause += ` LIMIT ? OFFSET ?`;
+        params.push(limit, offset);
         
         [products] = await connection.execute(`
-          SELECT p.*, u.name as author_name, u.avatar as author_avatar,
+          SELECT p.*, u.name as author_name, u.avatar as author_avatar, u.id as author_id,
                  COALESCE(p.quantity_sold, 0) as quantity_sold
           FROM products p
           LEFT JOIN users u ON p.author_id = u.id
@@ -240,12 +255,41 @@ router.get('/recommended', async (req, res) => {
         products = [];
       }
     } else {
-      // No user logged in, return empty array
-      products = [];
+      // No user logged in, return popular products as recommendations
+      // Get total count
+      const [countResult] = await connection.execute(`
+        SELECT COUNT(*) as total
+        FROM products p
+        WHERE p.in_stock != 0 OR p.in_stock IS NULL
+      `);
+      totalCount = countResult[0].total;
+      
+      // Get paginated products
+      const [popularProducts] = await connection.execute(`
+        SELECT p.*, u.name as author_name, u.avatar as author_avatar, u.id as author_id,
+               COALESCE(p.quantity_sold, 0) as quantity_sold,
+               COALESCE(p.total_revenue, 0) as total_revenue
+        FROM products p
+        LEFT JOIN users u ON p.author_id = u.id
+        WHERE p.in_stock != 0 OR p.in_stock IS NULL
+        ORDER BY p.quantity_sold DESC, p.rating DESC, p.created_at DESC
+        LIMIT ? OFFSET ?
+      `, [limit, offset]);
+      
+      products = popularProducts.map(product => ({
+        ...product,
+        author_avatar: product.author_avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(product.author_name || 'Designer')}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`
+      }));
     }
     
     connection.release();
-    res.json({ products });
+    res.json({ 
+      products: products || [],
+      total: totalCount,
+      limit: limit,
+      offset: offset,
+      hasMore: (offset + (products?.length || 0)) < totalCount
+    });
   } catch (error) {
     console.error('Get recommended products error:', error);
     res.status(500).json({ error: 'Failed to fetch recommended products' });
@@ -259,7 +303,7 @@ router.get('/:id', async (req, res) => {
     const connection = await pool.getConnection();
 
     const [products] = await connection.execute(`
-      SELECT p.*, u.name as author_name, u.avatar as author_avatar,
+      SELECT p.*, u.name as author_name, u.avatar as author_avatar, u.id as author_id,
              COALESCE(p.quantity_sold, 0) as quantity_sold,
              COALESCE(p.total_revenue, 0) as total_revenue
       FROM products p

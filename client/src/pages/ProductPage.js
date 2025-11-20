@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import styled from 'styled-components';
-import { FaShoppingCart, FaStar, FaHeart, FaShare, FaArrowLeft } from 'react-icons/fa';
+import { FaShoppingCart, FaStar, FaHeart, FaShare, FaArrowLeft, FaCheck } from 'react-icons/fa';
 import { useCart } from '../context/CartContext';
 import { productsAPI } from '../services/api';
 
@@ -188,11 +188,21 @@ const ProductDescription = styled.p`
   margin-bottom: 20px;
 `;
 
-const DesignerSection = styled.div`
+const DesignerSection = styled(Link)`
+  display: block;
   padding: 20px;
   background: #f8fafc;
   border-radius: 12px;
   border-left: 4px solid #667eea;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  
+  &:hover {
+    background: #f0f4ff;
+    border-left-color: #5a67d8;
+    transform: translateX(4px);
+  }
 `;
 
 const DesignerHeader = styled.div`
@@ -313,7 +323,7 @@ const QuantityInput = styled.input`
 
 const AddToCartButton = styled.button`
   width: 100%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: ${props => props.added ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'};
   color: white;
   border: none;
   padding: 16px;
@@ -321,16 +331,18 @@ const AddToCartButton = styled.button`
   font-weight: 600;
   font-size: 1.1rem;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 12px;
   margin-top: 20px;
+  position: relative;
+  min-height: 54px;
   
   &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+    transform: ${props => props.added ? 'none' : 'translateY(-2px)'};
+    box-shadow: ${props => props.added ? '0 4px 12px rgba(16, 185, 129, 0.3)' : '0 8px 25px rgba(102, 126, 234, 0.3)'};
   }
   
   &:disabled {
@@ -339,6 +351,69 @@ const AddToCartButton = styled.button`
     cursor: not-allowed;
     transform: none;
     box-shadow: none;
+  }
+  
+  .button-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    width: 100%;
+    position: relative;
+  }
+  
+  .default-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    opacity: ${props => props.added ? '0' : '1'};
+    transform: ${props => props.added ? 'translateX(-20px)' : 'translateX(0)'};
+    position: ${props => props.added ? 'absolute' : 'relative'};
+    width: 100%;
+  }
+  
+  .success-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    opacity: ${props => props.added ? '1' : '0'};
+    transform: ${props => props.added ? 'translateX(0)' : 'translateX(20px)'};
+    position: ${props => props.added ? 'relative' : 'absolute'};
+    width: 100%;
+  }
+  
+  .icon {
+    transition: transform 0.3s ease;
+    transform: ${props => props.added ? 'scale(1.1)' : 'scale(1)'};
+    flex-shrink: 0;
+  }
+`;
+
+const SizeError = styled.div`
+  color: #ef4444;
+  font-size: 0.9rem;
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: #fee2e2;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: slideDown 0.3s ease;
+  
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 `;
 
@@ -384,6 +459,9 @@ const ProductPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingProduct, setLoadingProduct] = useState(true);
   const [error, setError] = useState(null);
+  const [addedToCart, setAddedToCart] = useState(false);
+  const [sizeError, setSizeError] = useState(false);
+  const [cartError, setCartError] = useState(null);
 
   // Fetch product data from API
   useEffect(() => {
@@ -394,6 +472,7 @@ const ProductPage = () => {
         const response = await productsAPI.getById(id);
         console.log('Product API response:', response);
         if (response && response.product) {
+          console.log('Product author_id:', response.product.author_id);
           setProduct(response.product);
         } else {
           setError('Product not found');
@@ -419,11 +498,14 @@ const ProductPage = () => {
 
   const handleAddToCart = async () => {
     if (!selectedSize) {
-      alert('Please select a size');
+      setSizeError(true);
+      setTimeout(() => setSizeError(false), 3000);
       return;
     }
 
+    setSizeError(false);
     setIsLoading(true);
+    setAddedToCart(false);
     
     try {
       const result = await addToCart(
@@ -439,12 +521,20 @@ const ProductPage = () => {
       );
       
       if (result.success) {
-        alert('Added to cart successfully!');
+        setAddedToCart(true);
+        setCartError(null);
+        // Reset after 2 seconds
+        setTimeout(() => {
+          setAddedToCart(false);
+        }, 2000);
       } else {
-        alert(result.error || 'Failed to add to cart. Please try again.');
+        // Show error state briefly
+        setCartError(result.error || 'Failed to add to cart');
+        setTimeout(() => setCartError(null), 3000);
       }
     } catch (error) {
-      alert('Failed to add to cart. Please try again.');
+      setCartError('Failed to add to cart. Please try again.');
+      setTimeout(() => setCartError(null), 3000);
     } finally {
       setIsLoading(false);
     }
@@ -548,18 +638,34 @@ const ProductPage = () => {
 
           <ProductDescription>{product.description}</ProductDescription>
 
-            <DesignerSection>
-              <DesignerHeader>
-                <DesignerAvatar 
-                  src={product.author_avatar?.startsWith('http') ? product.author_avatar : product.author_avatar ? `${API_BASE_URL}${product.author_avatar}` : `https://via.placeholder.com/60x60/667eea/ffffff?text=${product.author_name?.charAt(0) || 'A'}`} 
-                  alt={product.author_name} 
-                />
-                <DesignerInfo>
-                  <DesignerName>{product.author_name}</DesignerName>
-                  <DesignerBio>{product.author_bio || 'A talented designer creating unique and inspiring artwork.'}</DesignerBio>
-                </DesignerInfo>
-              </DesignerHeader>
-            </DesignerSection>
+            {product.author_id ? (
+              <DesignerSection to={`/designer/${product.author_id}`} onClick={(e) => {
+                console.log('Navigating to designer:', product.author_id);
+              }}>
+                <DesignerHeader>
+                  <DesignerAvatar 
+                    src={product.author_avatar?.startsWith('http') ? product.author_avatar : product.author_avatar ? `${API_BASE_URL}${product.author_avatar}` : `https://via.placeholder.com/60x60/667eea/ffffff?text=${product.author_name?.charAt(0) || 'A'}`} 
+                    alt={product.author_name} 
+                  />
+                  <DesignerInfo>
+                    <DesignerName>{product.author_name}</DesignerName>
+                    <span style={{ fontSize: '0.85rem', color: '#667eea' }}>View Designer Profile →</span>
+                  </DesignerInfo>
+                </DesignerHeader>
+              </DesignerSection>
+            ) : (
+              <DesignerSection as="div" style={{ cursor: 'default', opacity: 0.6 }}>
+                <DesignerHeader>
+                  <DesignerAvatar 
+                    src={product.author_avatar?.startsWith('http') ? product.author_avatar : product.author_avatar ? `${API_BASE_URL}${product.author_avatar}` : `https://via.placeholder.com/60x60/667eea/ffffff?text=${product.author_name?.charAt(0) || 'A'}`} 
+                    alt={product.author_name} 
+                  />
+                  <DesignerInfo>
+                    <DesignerName>{product.author_name || 'Unknown Designer'}</DesignerName>
+                  </DesignerInfo>
+                </DesignerHeader>
+              </DesignerSection>
+            )}
 
           <OptionsSection>
             <OptionGroup>
@@ -614,10 +720,36 @@ const ProductPage = () => {
               </QuantitySelector>
             </OptionGroup>
 
-            <AddToCartButton onClick={handleAddToCart} disabled={isLoading || !selectedSize}>
-              <FaShoppingCart />
-              {isLoading ? 'Adding...' : `Add to Cart - $${(parseFloat(product.price || 0) * quantity).toFixed(2)}`}
+            <AddToCartButton 
+              onClick={handleAddToCart} 
+              disabled={isLoading || (!selectedSize && !addedToCart)} 
+              added={addedToCart}
+            >
+              <div className="button-content">
+                <div className="default-content">
+                  <FaShoppingCart className="icon" />
+                  <span>
+                    {isLoading ? 'Adding...' : `Add to Cart - $${(parseFloat(product.price || 0) * quantity).toFixed(2)}`}
+                  </span>
+                </div>
+                <div className="success-content">
+                  <FaCheck className="icon" />
+                  <span>Added to Cart!</span>
+                </div>
+              </div>
             </AddToCartButton>
+            {sizeError && (
+              <SizeError>
+                <FaShoppingCart />
+                Please select a size before adding to cart
+              </SizeError>
+            )}
+            {cartError && (
+              <SizeError style={{ background: '#fee2e2', color: '#dc2626' }}>
+                <FaShoppingCart />
+                {cartError}
+              </SizeError>
+            )}
           </OptionsSection>
         </InfoSection>
       </ProductGrid>

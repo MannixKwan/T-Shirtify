@@ -9,6 +9,8 @@ import CartPage from './pages/CartPage';
 import CheckoutPage from './pages/CheckoutPage';
 import OrdersPage from './pages/OrdersPage';
 import OrderDetailPage from './pages/OrderDetailPage';
+import ProfilePage from './pages/ProfilePage';
+import DesignerPage from './pages/DesignerPage';
 import SearchResultsPage from './pages/SearchResultsPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -33,6 +35,7 @@ function App() {
               {/* Public Routes */}
               <Route path="/" element={<HomePage />} />
               <Route path="/product/:id" element={<ProductPage />} />
+              <Route path="/designer/:id" element={<DesignerPage />} />
               <Route path="/search" element={<SearchResultsPage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
@@ -51,6 +54,11 @@ function App() {
               <Route path="/orders/:id" element={
                 <ProtectedRoute>
                   <OrderDetailPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/profile" element={
+                <ProtectedRoute>
+                  <ProfilePage />
                 </ProtectedRoute>
               } />
               
